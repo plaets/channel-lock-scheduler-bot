@@ -1,61 +1,37 @@
 use serenity::client::Client;
-use serenity::model::channel::{PermissionOverwriteType, PermissionOverwrite, GuildChannel, ChannelType, Message};
-use serenity::model::guild::{Guild, Role, PartialGuild};
-use serenity::model::id::{GuildId};
-use serenity::model::permissions::Permissions;
+use serenity::model::channel::{ChannelType, Message};
+use serenity::model::guild::{Guild, PartialGuild};
 use serenity::prelude::*;
 use serenity::framework::standard::StandardFramework;
 
-use job_scheduler::{JobScheduler, Job, Schedule};
-use serde::{Serialize, Deserialize};
+use job_scheduler::*;
 use confy;
 
 use std::thread;
 use std::time::Duration;
 use std::sync::{Arc};
+use chrono::offset; //bad idea and might just stop working one day but otherwise i cant check which job starts first 
 
-#[derive(Serialize, Deserialize, Clone)]
-struct Config {
-    discord_token: String,
-    channel_name: String,
-    role_name: String,
-    lock_message: String,
-    unlock_message: String,
-    lock_on: String,
-    unlock_on: String,
-    agressive_lock: bool,   //delete all messages if locked
-}
+mod config;
+use config::*;
 
-impl ::std::default::Default for Config {
-    fn default() -> Self { Self {
-        discord_token: String::from("DISCORD_TOKEN"),
-        channel_name: String::from("example-channel"),
-        role_name: String::from("example-role"),
-        lock_message: String::from("locked"),
-        unlock_message: String::from("unlocked"),
-        unlock_on: String::from("0 0 20 * * Sun *"),
-        lock_on: String::from("0 0 0 * * Mon *"),
-        agressive_lock: true,
-    } }
-}
+mod utils;
+use utils::*;
 
 struct State {
-    guilds: Vec<(Box<Context>, Guild, u64)>,
+    guilds: Vec<(Box<Context>, Guild, u64)>, //u64 - channel id
     locked: bool,
+    bot_id: u64,
 }
 
 impl State {
-    fn new() -> Self {
+    fn new(bot_id: u64, locked: bool) -> Self {
         Self {
             guilds: Vec::new(),
-            locked: true,
+            locked: locked,
+            bot_id: bot_id,
         }
     }
-}
-
-struct ConfigKey;
-impl TypeMapKey for ConfigKey {
-    type Value = Arc<Config>;
 }
 
 struct StateKey;
@@ -69,10 +45,13 @@ impl EventHandler for Handler {
         let state_mutex = (*ctx.data.write().get::<StateKey>().expect("Expected state")).clone();
         let mut state_guard = state_mutex.lock();
 
-        if let Some(ch) = guild.channels.values().filter(|c| (***c).read().kind == ChannelType::Text).nth(0) {
-            (*state_guard).guilds.push((Box::new(ctx.clone()), guild.clone(), *(**ch).read().id.as_u64()));
-            println!("added a new guild");
+        let config = &(*(*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone());
+        let channel = create_channel(&ctx, &guild, &config.channel_name).map_err(|err| println!("failed to create channel {}", err)).unwrap();
+        create_role(&ctx, &guild, &config.role_name).map_err(|_| println!("failed to create role")).map_err(|err| println!("failed to create the role {:?}", err));
+        (*state_guard).guilds.push((Box::new(ctx.clone()), guild.clone(), *channel.id.as_u64()));
 
+        println!("added a new guild");
+        if let Some(ch) = guild.channels.values().filter(|c| (***c).read().kind == ChannelType::Text).nth(0) {
             if !is_new { return }
             println!("joined a new server");
             if let Err(err) = (**ch).read().send_message(ctx.http.clone(), |m| m.content("hello")) { //amazing, this took so much fucking time... 
@@ -100,9 +79,11 @@ impl EventHandler for Handler {
             //so yeah for every message this thing above happens, epic
             //i could also store that in the handler and access it from self
             let state_mutex = (*ctx.data.write().get::<StateKey>().expect("Expected state")).clone(); 
-            let mut state_guard = state_mutex.lock();
-            if (*state_guard).locked && msg.channel_id == (*state_guard).guilds.iter().find(|p| p.1.id == msg.guild_id.unwrap()).unwrap().2 {
-                msg.delete(ctx.http.clone());
+            let state_guard = state_mutex.lock();
+            if (*state_guard).locked && 
+                msg.channel_id == (*state_guard).guilds.iter().find(|p| p.1.id == msg.guild_id.unwrap()).unwrap().2 &&
+                *msg.author.id.as_u64() != (*state_guard).bot_id {
+                    msg.delete(ctx.http.clone()).map_err(|_| println!("failed to delete a message"));
             }
         }
     }
@@ -115,14 +96,15 @@ fn main() {
         return 
     }
 
-    let unlock_spec = cfg.unlock_on.parse().expect("Invalid unlock_on specification");
-    let lock_spec = cfg.lock_on.parse().expect("Invalid lock_on specification");
+    let unlock_spec: Schedule = cfg.unlock_on.parse().expect("Invalid unlock_on specification");
+    let lock_spec: Schedule = cfg.lock_on.parse().expect("Invalid lock_on specification");
+    let should_be_locked = lock_spec.upcoming(offset::Utc).next() > unlock_spec.upcoming(offset::Utc).next(); //bad assumption
 
     println!("starting");
     let mut client = Client::new(cfg.discord_token.clone(), Handler)
         .expect("Error creating client");
 
-    let state = Arc::new(Mutex::new(State::new()));
+    let state = Arc::new(Mutex::new(State::new(*client.cache_and_http.http.get_current_application_info().expect("failed to get app info").id.as_u64(), true)));
 
     {
         let mut data = client.data.write();
@@ -139,9 +121,9 @@ fn main() {
             let mut state_guard = state.lock();
             (*state_guard).locked = false;
             (*state_guard).guilds.iter().for_each(|p| {
-                unlock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str());
+                unlock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to unlock the channel"));
                 if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.unlock_message.as_str()));
+                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.unlock_message.as_str())).expect("failed the send a message");
                 }
             });
             println!("done");
@@ -151,11 +133,11 @@ fn main() {
             println!("locking");
             let state = state.clone();
             let mut state_guard = state.lock();
-            (*state_guard).locked = true;
+            (*state_guard).locked = true; 
             (*state_guard).guilds.iter().for_each(|p| {
-                lock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str());
+                lock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to lock the channel"));
                 if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.lock_message.as_str()));
+                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.lock_message.as_str())).expect("failed to send a message");
                 }
             });
             println!("done");
@@ -181,65 +163,4 @@ fn main() {
     }
 
     scheduler_thread.join();
-}
-
-fn find_channel(ctx: &Context, guild: &GuildId, name: &str) -> Result<Option<GuildChannel>, serenity::Error> {
-    Ok(guild.channels(ctx.http.clone())?.values().find(|c| c.name == name).and_then(|c| Some((*c).clone())))
-    //not cloning would be epic but i dont know how to take something out of a shared reference whatever that means
-}
-
-fn find_role(ctx: &Context, guild: &GuildId, name: &str) -> Result<Option<Role>, serenity::Error> {
-    Ok(ctx.http.get_guild_roles(*guild.as_u64())?.into_iter().find(|r| r.name == name))
-}
-
-enum BotError {
-    SerenityError(serenity::Error),
-    UnknownRole(String),
-    UnknownChannel(String),
-}
-
-fn create_channel(ctx: &mut Context, guild: &Guild, channel_name: &str) -> Result<Option<GuildChannel>, serenity::Error> {
-    //let channel_name = (*((*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone())).channel_name.clone(); 
-    //great, im not entirely (i mean, i came up with it myself by trial and error (not proud of it)) sure what all of that means but i ~~guess~~ hope it does the job
-    //i love rust
-
-    if let Ok(None) = find_channel(ctx, &guild.id, &channel_name) {
-        guild.create_channel(ctx.http.clone(), |c| c.name(channel_name)).and_then(|r| Ok(Some(r))).or_else(|err| Err(err))
-    } else {
-        Ok(None)
-    }
-}
-
-fn lock_channel(ctx: &Context, guild: &Guild, channel_name: &str, role_name: &str) -> Result<(), BotError> {
-    //let config = (*(*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone()).clone(); 
-    if let Ok(Some(role)) = find_role(ctx, &guild.id, role_name) {
-        if let Ok(Some(channel)) = find_channel(ctx, &guild.id, channel_name) {
-            channel.id.create_permission(ctx.http.clone(), &PermissionOverwrite {
-                allow: Permissions::empty(),
-                deny: Permissions::SEND_MESSAGES,
-                kind: PermissionOverwriteType::Role(role.id),
-            }).or_else(|err| Err(BotError::SerenityError(err)))
-        } else {
-            Err(BotError::UnknownChannel(String::from(channel_name)))
-        }
-    } else {
-        Err(BotError::UnknownRole(String::from(role_name)))
-    }
-}
-
-fn unlock_channel(ctx: &Context, guild: &Guild, channel_name: &str, role_name: &str) -> Result<(), BotError> {
-    //let config = (*((*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone())).clone(); 
-    if let Ok(Some(role)) = find_role(ctx, &guild.id, role_name) {
-        if let Ok(Some(channel)) = find_channel(ctx, &guild.id, channel_name) {
-            channel.id.create_permission(ctx.http.clone(), &PermissionOverwrite {
-                allow: Permissions::SEND_MESSAGES,
-                deny: Permissions::empty(),
-                kind: PermissionOverwriteType::Role(role.id),
-            }).or_else(|err| Err(BotError::SerenityError(err)))
-        } else {
-            Err(BotError::UnknownChannel(String::from(channel_name)))
-        }
-    } else {
-        Err(BotError::UnknownRole(String::from(role_name)))
-    }
 }
