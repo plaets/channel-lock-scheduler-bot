@@ -1,6 +1,7 @@
 # channel-lock-scheduler-bot
 
-A Discord bot for locking and unlocking a channel based on a schedule
+A Discord bot for locking and unlocking a channel based on a schedule.
+This bot can join multiple Discord servers, however, it will work on the same exact schedule on all of them.
 
 ## Configuration file
 
@@ -16,3 +17,9 @@ lock_on = '0 0 0 * * Mon *'      # locking schedule in crontab format
 unlock_on = '0 0 21 * * Sun *'   # unlocking schedule in crontab format
 agressive_lock = true            # if enabled, when the channel is locked, the bot will delete all messages posted to that channel 
 ```
+
+## TODO
+
+* Refactoring
+* `agressive_lock` should work only if a user has the role specified in the configuration
+* Logs

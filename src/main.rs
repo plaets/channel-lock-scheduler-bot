@@ -60,6 +60,12 @@ impl EventHandler for Handler {
                     if !is_new { return }
                     println!("joined a new server {:?} {:?}", guild.name, guild.id);
                     (**ch).read().send_message(ctx.http.clone(), |m| m.content("hello")).map_err(|err| println!("failed to send the hello message {:?}", err)).ok();
+
+                    if (*state_guard).locked {
+                        lock_channel(&ctx, &guild, &config.channel_name, &config.role_name).map_err(|err| println!("failed to lock a channel {:?}", err)).ok();
+                    } else {
+                        unlock_channel(&ctx, &guild, &config.channel_name, &config.role_name).map_err(|err| println!("failed to unlock a channel {:?}", err)).ok();
+                    }
                 }
             }
             Err(err) => println!("failed to create channel {}", err)
@@ -104,7 +110,10 @@ fn main() {
 
     let unlock_spec: Schedule = cfg.unlock_on.parse().expect("Invalid unlock_on specification");
     let lock_spec: Schedule = cfg.lock_on.parse().expect("Invalid lock_on specification");
-    let should_be_locked = lock_spec.upcoming(offset::Local).next() > unlock_spec.upcoming(offset::Local).next(); //bad assumption
+    let should_be_locked = lock_spec.upcoming(offset::Utc).next() > unlock_spec.upcoming(offset::Utc).next(); //bad assumption
+    
+    println!("next lock: {:?}", lock_spec.upcoming(offset::Utc).next());
+    println!("next unlock: {:?}", unlock_spec.upcoming(offset::Utc).next());
 
     println!("starting");
     let mut client = Client::new(cfg.discord_token.clone(), Handler)
