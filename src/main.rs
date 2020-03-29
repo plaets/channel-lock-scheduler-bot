@@ -73,17 +73,12 @@ impl EventHandler for Handler {
         if let Some(id) =  (*state_guard).guilds.iter().position(|p| p.1.id == partial_guild.id) {
             (*state_guard).guilds.remove(id);
         } else {
-            print!("guild {:?} was not registered??", partial_guild.id.as_u64());
+            print!("guild {:?} {:?} was not registered??", partial_guild.id.as_u64(), partial_guild.name);
         }
     }
 
     fn message(&self, ctx: Context, msg: Message) { //not the best idea performace-wise
-        let config = &(*((*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone()));
-        if config.agressive_lock { //i wanted to have two different handlers, one for agressive locking
-            //but i dont know how to share methods between implemetations and copying guild_create
-            //and guild_delete to another implemetation is just stupid
-            //so yeah for every message this thing above happens, epic
-            //i could also store that in the handler and access it from self
+        if (*((*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone())).agressive_lock { 
             let state_mutex = (*ctx.data.write().get::<StateKey>().expect("Expected state")).clone(); 
             let state_guard = state_mutex.lock();
             if (*state_guard).locked && 
@@ -93,6 +88,11 @@ impl EventHandler for Handler {
             }
         }
     }
+    //i wanted to have two different handlers, one for agressive locking
+    //but i dont know how to share methods between implemetations and copying guild_create
+    //and guild_delete to another implemetation is just stupid
+    //so yeah for every message this thing above happens, epic
+    //i could also store that in the handler and access it from self
 }
 
 fn main() {
