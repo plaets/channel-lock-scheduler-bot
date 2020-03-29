@@ -46,15 +46,23 @@ impl EventHandler for Handler {
         let mut state_guard = state_mutex.lock();
 
         let config = &(*(*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone());
-        let channel = create_channel(&ctx, &guild, &config.channel_name).map_err(|err| println!("failed to create channel {}", err)).unwrap();
-        create_role(&ctx, &guild, &config.role_name).map_err(|_| println!("failed to create role")).map_err(|err| println!("failed to create role {:?}", err));
-        (*state_guard).guilds.push((Box::new(ctx.clone()), guild.clone(), *channel.id.as_u64()));
+        match create_channel(&ctx, &guild, &config.channel_name) {
+            Ok(channel) => {
+                if let Err(err) = create_role(&ctx, &guild, &config.role_name) {
+                    println!("failed to create role {}", err);
+                    return
+                }
 
-        println!("added a new guild {:?} {:?}", guild.name, guild.id);
-        if let Some(ch) = guild.channels.values().filter(|c| (***c).read().kind == ChannelType::Text).nth(0) {
-            if !is_new { return }
-            println!("joined a new server {:?} {:?}", guild.name, guild.id);
-            (**ch).read().send_message(ctx.http.clone(), |m| m.content("hello")).map_err(|err| println!("failed to send the hello message {:?}", err));
+                (*state_guard).guilds.push((Box::new(ctx.clone()), guild.clone(), *channel.id.as_u64()));
+
+                println!("added a new guild {:?} {:?}", guild.name, guild.id);
+                if let Some(ch) = guild.channels.values().filter(|c| (***c).read().kind == ChannelType::Text).nth(0) {
+                    if !is_new { return }
+                    println!("joined a new server {:?} {:?}", guild.name, guild.id);
+                    (**ch).read().send_message(ctx.http.clone(), |m| m.content("hello")).map_err(|err| println!("failed to send the hello message {:?}", err)).ok();
+                }
+            }
+            Err(err) => println!("failed to create channel {}", err)
         }
     }
 
@@ -81,7 +89,7 @@ impl EventHandler for Handler {
             if (*state_guard).locked && 
                 msg.channel_id == (*state_guard).guilds.iter().find(|p| p.1.id == msg.guild_id.unwrap()).unwrap().2 &&
                 *msg.author.id.as_u64() != (*state_guard).bot_id {
-                    msg.delete(ctx.http.clone()).map_err(|_| println!("failed to delete a message"));
+                    msg.delete(ctx.http.clone()).map_err(|_| println!("failed to delete a message")).ok();
             }
         }
     }
@@ -119,9 +127,9 @@ fn main() {
             let mut state_guard = state.lock();
             (*state_guard).locked = false;
             (*state_guard).guilds.iter().for_each(|p| {
-                unlock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to unlock the channel"));
+                unlock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to unlock the channel")).ok();
                 if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.unlock_message.as_str())).expect("failed the send a message");
+                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.unlock_message.as_str())).map_err(|_| println!("failed the send a message")).ok();
                 }
             });
             println!("done");
@@ -133,9 +141,9 @@ fn main() {
             let mut state_guard = state.lock();
             (*state_guard).locked = true; 
             (*state_guard).guilds.iter().for_each(|p| {
-                lock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to lock the channel"));
+                lock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to lock the channel")).ok();
                 if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.lock_message.as_str())).expect("failed to send a message");
+                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.lock_message.as_str())).map_err(|_| println!("failed to send a message")).ok();
                 }
             });
             println!("done");
@@ -160,5 +168,5 @@ fn main() {
         println!("An error occured while running the client: {:?}", why);
     }
 
-    scheduler_thread.join();
+    scheduler_thread.join().map_err(|err| println!("failed to join the scheduler thread {:?}", err)).unwrap();
 }
