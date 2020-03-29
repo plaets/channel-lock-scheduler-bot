@@ -1,12 +1,21 @@
 # channel-lock-scheduler-bot
 
-A Discord bot for locking and unlocking a channel based on a schedule.
-This bot can join multiple Discord servers, however, it will work on the same exact schedule on all of them.
-**Currently, time schedule must be specified in UTC.**
+A self-hosted Discord bot for locking and unlocking a channel based on a schedule. 
+This bot can join multiple Discord servers, however, it will work on the same schedule on all of them. 
+**Currently, the schedule must be specified in UTC.**
+
+## Installation
+
+1. [Install Rust](https://www.rust-lang.org/tools/install)
+2. Clone this repository
+3. Run `cargo run --release` in the cloned repository
+4. Create a Discord API token, add the bot to your server... (there are many guides on how to do that on the internet and I'm not sure whether i should link to any of them)
+5. Modify the created configuration file
+6. Run `cargo run --release` again
 
 ## Configuration file
 
-The bot searches for `bot.cfg` in its working directory. It will create an example configuration file when run for the first time.
+The bot searches for `bot.cfg` in its working directory. An example configuration file will be created when the bot is run for the first time.
 
 ```toml
 discord_token = 'DISCORD_TOKEN'  # discord api token
@@ -24,3 +33,7 @@ agressive_lock = true            # if enabled, when the channel is locked, the b
 * Refactoring
 * `agressive_lock` should work only if a user has the role specified in the configuration
 * Logs
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE.md file for details

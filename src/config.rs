@@ -11,7 +11,7 @@ pub struct Config {
     pub unlock_message: String,
     pub lock_on: String,
     pub unlock_on: String,
-    pub agressive_lock: bool,   //delete all messages if locked
+    pub agressive_lock: bool,   
 }
 
 impl ::std::default::Default for Config {
@@ -21,11 +21,11 @@ impl ::std::default::Default for Config {
         role_name: String::from("example-role"), //role to lock the channel for
         lock_message: String::from("locked"), //message sent when the channel is being locked
         unlock_message: String::from("unlocked"), //message sent when the channel is being unlocked
-        unlock_on: String::from("0 0 20 * * Sun *"), //unlock time specification in cron format
-        lock_on: String::from("0 0 0 * * Mon *"), //lock time specification in cron format
+        unlock_on: String::from("0 0 20 * * Sun *"), //unlock time specification in cron format ***in UTC***
+        lock_on: String::from("0 0 0 * * Mon *"), //lock time specification in cron format ***in UTC***
         agressive_lock: true, //if enabled, the bot will delete all messages posted when the channel is locked, 
                               //useful to enforce the lock on the server admins
-                              //currently this does not check wether the role matches or not (it
+                              //currently this doesn't check whether the role matches or not (it
                               //probably should)
     } }
 }
