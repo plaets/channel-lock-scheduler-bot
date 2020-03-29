@@ -104,7 +104,7 @@ impl EventHandler for Handler {
 fn main() {
     let cfg: Config = confy::load_path("./bot.cfg").expect("Failed to read config");
     if cfg.discord_token == Config::default().discord_token {
-        println!("Please set your discord token in the configuration file");
+        println!("Please set your Discord API token in the configuration file");
         return 
     }
 

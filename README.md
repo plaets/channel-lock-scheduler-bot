@@ -9,8 +9,8 @@ This bot can join multiple Discord servers, however, it will work on the same sc
 1. [Install Rust](https://www.rust-lang.org/tools/install)
 2. Clone this repository
 3. Run `cargo run --release` in the cloned repository
-4. Create a Discord API token, add the bot to your server... (there are many guides on how to do that on the internet and I'm not sure whether i should link to any of them)
-5. Modify the created configuration file (a file named `bot.cfg` should appear in you working directory after running `cargo run --release`)
+4. Create a Discord API token, add the bot to your server... (there are many guides on how to do that on the internet and I'm not sure whether I should link any of them)
+5. Modify the created configuration file (a file named `bot.cfg` should appear in your working directory after running `cargo run --release`)
 6. Run `cargo run --release` again
 
 ## Configuration file
@@ -27,6 +27,14 @@ lock_on = '0 0 0 * * Mon *'      # locking schedule in crontab format, ***in UTC
 unlock_on = '0 0 21 * * Sun *'   # unlocking schedule in crontab format, ***in UTC***
 agressive_lock = true            # if enabled, when the channel is locked, the bot will delete all messages posted to that channel 
 ```
+
+## Dependencies
+
+* [serenity](https://github.com/serenity-rs/serenity) - library for the Discord API
+* [job_scheduler](https://github.com/lholden/job_scheduler/)- for scheduling tasks
+* [confy](https://github.com/rust-cli/confy) - saving and loading configuration files with serde
+* [serde](https://github.com/serde-rs/serde) - used by confy to serialize and deserialize the configuration file
+* [chrono](https://github.com/chronotope/chrono) - I believe it's needed to use the `upcoming` method of `Schedule` from job_scheduler
 
 ## TODO
 
