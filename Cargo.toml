@@ -1,5 +1,5 @@
 [package]
-name = "bot"
+name = "channel-lock-scheduler-bot"
 version = "0.1.0"
 authors = ["plaets"]
 edition = "2018"

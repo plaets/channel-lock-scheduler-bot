@@ -100,17 +100,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bot"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "confy",
- "job_scheduler",
- "serde",
- "serenity",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -155,6 +144,17 @@ name = "cfg-if"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
+
+[[package]]
+name = "channel-lock-scheduler-bot"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "confy",
+ "job_scheduler",
+ "serde",
+ "serenity",
+]
 
 [[package]]
 name = "chrono"

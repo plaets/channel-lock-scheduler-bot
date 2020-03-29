@@ -47,27 +47,25 @@ impl EventHandler for Handler {
 
         let config = &(*(*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone());
         let channel = create_channel(&ctx, &guild, &config.channel_name).map_err(|err| println!("failed to create channel {}", err)).unwrap();
-        create_role(&ctx, &guild, &config.role_name).map_err(|_| println!("failed to create role")).map_err(|err| println!("failed to create the role {:?}", err));
+        create_role(&ctx, &guild, &config.role_name).map_err(|_| println!("failed to create role")).map_err(|err| println!("failed to create role {:?}", err));
         (*state_guard).guilds.push((Box::new(ctx.clone()), guild.clone(), *channel.id.as_u64()));
 
-        println!("added a new guild");
+        println!("added a new guild {:?} {:?}", guild.name, guild.id);
         if let Some(ch) = guild.channels.values().filter(|c| (***c).read().kind == ChannelType::Text).nth(0) {
             if !is_new { return }
-            println!("joined a new server");
-            if let Err(err) = (**ch).read().send_message(ctx.http.clone(), |m| m.content("hello")) { //amazing, this took so much fucking time... 
-                println!("failed to send da hello message {:?}", err); 
-            }
+            println!("joined a new server {:?} {:?}", guild.name, guild.id);
+            (**ch).read().send_message(ctx.http.clone(), |m| m.content("hello")).map_err(|err| println!("failed to send the hello message {:?}", err));
         }
     }
 
     fn guild_delete(&self, ctx: Context, partial_guild: PartialGuild, _: Option<Arc<serenity::prelude::RwLock<Guild>>>) {
-        print!("guild delete {}", partial_guild.id.as_u64());
+        print!("deleted from guild {:?} {:?}", partial_guild.name, partial_guild.id.as_u64());
         let state_mutex = (*ctx.data.write().get::<StateKey>().expect("Expected state")).clone();
         let mut state_guard = state_mutex.lock();
         if let Some(id) =  (*state_guard).guilds.iter().position(|p| p.1.id == partial_guild.id) {
             (*state_guard).guilds.remove(id);
         } else {
-            print!("guild {} was not registered??", partial_guild.id.as_u64());
+            print!("guild {:?} was not registered??", partial_guild.id.as_u64());
         }
     }
 
@@ -98,13 +96,13 @@ fn main() {
 
     let unlock_spec: Schedule = cfg.unlock_on.parse().expect("Invalid unlock_on specification");
     let lock_spec: Schedule = cfg.lock_on.parse().expect("Invalid lock_on specification");
-    let should_be_locked = lock_spec.upcoming(offset::Utc).next() > unlock_spec.upcoming(offset::Utc).next(); //bad assumption
+    let should_be_locked = lock_spec.upcoming(offset::Local).next() > unlock_spec.upcoming(offset::Local).next(); //bad assumption
 
     println!("starting");
     let mut client = Client::new(cfg.discord_token.clone(), Handler)
         .expect("Error creating client");
 
-    let state = Arc::new(Mutex::new(State::new(*client.cache_and_http.http.get_current_application_info().expect("failed to get app info").id.as_u64(), true)));
+    let state = Arc::new(Mutex::new(State::new(*client.cache_and_http.http.get_current_application_info().expect("failed to get app info").id.as_u64(), should_be_locked)));
 
     {
         let mut data = client.data.write();
