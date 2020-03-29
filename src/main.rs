@@ -110,7 +110,7 @@ fn main() {
 
     let unlock_spec: Schedule = cfg.unlock_on.parse().expect("Invalid unlock_on specification");
     let lock_spec: Schedule = cfg.lock_on.parse().expect("Invalid lock_on specification");
-    let should_be_locked = lock_spec.upcoming(offset::Utc).next() > unlock_spec.upcoming(offset::Utc).next(); //bad assumption
+    let should_be_locked = lock_spec.upcoming(offset::Utc).next() > unlock_spec.upcoming(offset::Utc).next(); //bad idea
     
     println!("next lock: {:?}", lock_spec.upcoming(offset::Utc).next());
     println!("next unlock: {:?}", unlock_spec.upcoming(offset::Utc).next());
@@ -130,6 +130,7 @@ fn main() {
     let scheduler_thread = thread::spawn(move || {
         let mut scheduler = JobScheduler::new();
 
+        //TODO: code duplication
         scheduler.add(Job::new(unlock_spec, || {
             println!("unlocking");
             let state = state.clone();
