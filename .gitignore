@@ -1,2 +1,4 @@
 /target
 run
+bot.cfg
+bot.*.cfg
