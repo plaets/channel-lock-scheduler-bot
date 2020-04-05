@@ -137,9 +137,9 @@ fn main() {
             let mut state_guard = state.lock();
             (*state_guard).locked = false;
             (*state_guard).guilds.iter().for_each(|p| {
-                unlock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to unlock the channel")).ok();
+                unlock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|err| println!("failed to unlock the channel {:?}", err)).ok();
                 if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.unlock_message.as_str())).map_err(|_| println!("failed the send a message")).ok();
+                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.unlock_message.as_str())).map_err(|err| println!("failed the send a message {:?}", err)).ok();
                 }
             });
             println!("done");
@@ -151,9 +151,9 @@ fn main() {
             let mut state_guard = state.lock();
             (*state_guard).locked = true; 
             (*state_guard).guilds.iter().for_each(|p| {
-                lock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|_| println!("failed to lock the channel")).ok();
+                lock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|err| println!("failed to lock the channel {:?}", err)).ok();
                 if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.lock_message.as_str())).map_err(|_| println!("failed to send a message")).ok();
+                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.lock_message.as_str())).map_err(|err| println!("failed to send a message {:?}", err)).ok();
                 }
             });
             println!("done");
