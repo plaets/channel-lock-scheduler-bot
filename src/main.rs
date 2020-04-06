@@ -45,6 +45,11 @@ impl EventHandler for Handler {
         let state_mutex = (*ctx.data.write().get::<StateKey>().expect("Expected state")).clone();
         let mut state_guard = state_mutex.lock();
 
+        if let Some(_) = (*state_guard).guilds.iter().find(|g| g.1.id == guild.id) {
+            println!("guild_create event for an already existing guild {:?}", guild.id);
+            return;
+        }
+
         let config = &(*(*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone());
         match create_channel(&ctx, &guild, &config.channel_name) {
             Ok(channel) => {
