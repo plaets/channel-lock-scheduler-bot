@@ -15,8 +15,11 @@ use chrono::offset; //bad idea and might just stop working one day but otherwise
 mod config;
 use config::*;
 
-mod utils;
-use utils::*;
+mod partial_permission_overwrite;
+use partial_permission_overwrite::*;
+
+mod guild_context;
+use guild_context::*;
 
 //mod partial_permission_overwrite;
 //use partial_permission_overwrite::{PartialPermissionOverwrite, create_lock_permisson, create_unlock_permisson};

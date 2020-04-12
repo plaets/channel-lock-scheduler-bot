@@ -1,39 +1,10 @@
 use serenity::prelude::*;
 use serenity::model::{
-    permissions::Permissions,
-    channel::{PermissionOverwriteType, GuildChannel, PermissionOverwrite},
+    channel::{PermissionOverwriteType, GuildChannel},
     guild::{Guild, Role},
 };
 
-#[derive(Copy, Clone)]
-pub struct PartialPermissionOverwrite {
-    allow: Permissions,
-    deny: Permissions,
-}
-
-pub fn create_lock_permisson() -> PartialPermissionOverwrite {
-    PartialPermissionOverwrite {
-        allow: Permissions::empty(),
-        deny: Permissions::SEND_MESSAGES,
-    }
-}
-
-pub fn create_unlock_permisson() -> PartialPermissionOverwrite {
-    PartialPermissionOverwrite {
-        allow: Permissions::SEND_MESSAGES,
-        deny: Permissions::empty(),
-    }
-}
-
-impl PartialPermissionOverwrite {
-    pub fn to_permission_overwrite(&self, kind: PermissionOverwriteType) -> PermissionOverwrite {
-        PermissionOverwrite {
-            allow: self.allow,
-            deny: self.deny,
-            kind,
-        }
-    }
-}
+use crate::partial_permission_overwrite::{PartialPermissionOverwrite};
 
 #[derive(Debug)]
 pub enum GuildContextError {
