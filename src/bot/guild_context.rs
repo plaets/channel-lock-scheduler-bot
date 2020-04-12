@@ -4,7 +4,7 @@ use serenity::model::{
     guild::{Guild, Role},
 };
 
-use crate::partial_permission_overwrite::{PartialPermissionOverwrite};
+use crate::bot::partial_permission_overwrite::{PartialPermissionOverwrite};
 
 #[derive(Debug)]
 pub enum GuildContextError {
