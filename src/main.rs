@@ -48,10 +48,10 @@ fn main() {
     let scheduler_thread = thread::spawn(move || {
         let mut scheduler = JobScheduler::new();
 
-        let job_fn = |msg: &str, perm: PartialPermissionOverwrite| {
+        let job_fn = |msg: &str, perm: PartialPermissionOverwrite, locked: bool| {
             let state = state.clone();
             let mut state_guard = state.lock();
-            (*state_guard).locked = false;
+            (*state_guard).locked = locked;
             (*state_guard).guilds.iter().for_each(|p| {
                 let gctx = GuildContext{ ctx: &*p.0, guild: &p.1 };
                 gctx.change_channel_permissions(cfg.channel_name.as_str(), cfg.role_name.as_str(), perm.clone()).map_err(|err| println!("failed to change perms of the channel {:?}", err)).ok();
@@ -63,13 +63,13 @@ fn main() {
 
         scheduler.add(Job::new(unlock_spec, || {
             println!("unlocking");
-            job_fn(cfg.unlock_message.as_str(), create_unlock_permisson());
+            job_fn(cfg.unlock_message.as_str(), create_unlock_permisson(), false);
             println!("done");
         }));
 
         scheduler.add(Job::new(lock_spec, || {
             println!("locking");
-            job_fn(cfg.lock_message.as_str(), create_lock_permisson());
+            job_fn(cfg.lock_message.as_str(), create_lock_permisson(), true);
             println!("done");
         }));
 
