@@ -18,6 +18,12 @@ use config::*;
 mod utils;
 use utils::*;
 
+//mod partial_permission_overwrite;
+//use partial_permission_overwrite::{PartialPermissionOverwrite, create_lock_permisson, create_unlock_permisson};
+//
+//mod guild_context;
+//use guild_context::{GuildContext};
+
 struct State {
     guilds: Vec<(Box<Context>, Guild, u64)>, //u64 - channel id
     locked: bool,
@@ -28,8 +34,8 @@ impl State {
     fn new(bot_id: u64, locked: bool) -> Self {
         Self {
             guilds: Vec::new(),
-            locked: locked,
-            bot_id: bot_id,
+            locked,
+            bot_id,
         }
     }
 }
@@ -42,18 +48,19 @@ impl TypeMapKey for StateKey {
 struct Handler;
 impl EventHandler for Handler {
     fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
+        let gctx = GuildContext{ ctx: &ctx, guild: &guild };
         let state_mutex = (*ctx.data.write().get::<StateKey>().expect("Expected state")).clone();
         let mut state_guard = state_mutex.lock();
 
-        if let Some(_) = (*state_guard).guilds.iter().find(|g| g.1.id == guild.id) {
+        if (*state_guard).guilds.iter().any(|g| g.1.id == guild.id) {
             println!("guild_create event for an already existing guild {:?}", guild.id);
             return;
         }
 
         let config = &(*(*ctx.data.read()).get::<ConfigKey>().expect("Expected config").clone());
-        match create_channel(&ctx, &guild, &config.channel_name) {
+        match gctx.create_channel(&config.channel_name) {
             Ok(channel) => {
-                if let Err(err) = create_role(&ctx, &guild, &config.role_name) {
+                if let Err(err) = gctx.create_role(&config.role_name) {
                     println!("failed to create role {}", err);
                     return
                 }
@@ -67,9 +74,9 @@ impl EventHandler for Handler {
                     (**ch).read().send_message(ctx.http.clone(), |m| m.content("hello")).map_err(|err| println!("failed to send the hello message {:?}", err)).ok();
 
                     if (*state_guard).locked {
-                        lock_channel(&ctx, &guild, &config.channel_name, &config.role_name).map_err(|err| println!("failed to lock a channel {:?}", err)).ok();
+                        gctx.change_channel_permissions(&config.channel_name, &config.role_name, create_lock_permisson()).map_err(|err| println!("failed to lock a channel {:?}", err)).ok();
                     } else {
-                        unlock_channel(&ctx, &guild, &config.channel_name, &config.role_name).map_err(|err| println!("failed to unlock a channel {:?}", err)).ok();
+                        gctx.change_channel_permissions(&config.channel_name, &config.role_name, create_unlock_permisson()).map_err(|err| println!("failed to unlock a channel {:?}", err)).ok();
                     }
                 }
             }
@@ -95,14 +102,14 @@ impl EventHandler for Handler {
             if (*state_guard).locked && 
                 msg.channel_id == (*state_guard).guilds.iter().find(|p| p.1.id == msg.guild_id.unwrap()).unwrap().2 &&
                 *msg.author.id.as_u64() != (*state_guard).bot_id {
-                    msg.delete(ctx.http.clone()).map_err(|_| println!("failed to delete a message")).ok();
+                    msg.delete(ctx.http).map_err(|_| println!("failed to delete a message")).ok();
             }
         }
     }
     //i wanted to have two different handlers, one for agressive locking
     //but i dont know how to share methods between implemetations and copying guild_create
     //and guild_delete to another implemetation is just stupid
-    //so yeah for every message this thing above happens, epic
+    //so yeah line 92 is executed for every message 
     //i could also store that in the handler and access it from self
 }
 
@@ -135,32 +142,28 @@ fn main() {
     let scheduler_thread = thread::spawn(move || {
         let mut scheduler = JobScheduler::new();
 
-        //TODO: code duplication
-        scheduler.add(Job::new(unlock_spec, || {
-            println!("unlocking");
+        let job_fn = |msg: &str, perm: PartialPermissionOverwrite| {
             let state = state.clone();
             let mut state_guard = state.lock();
             (*state_guard).locked = false;
             (*state_guard).guilds.iter().for_each(|p| {
-                unlock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|err| println!("failed to unlock the channel {:?}", err)).ok();
-                if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.unlock_message.as_str())).map_err(|err| println!("failed the send a message {:?}", err)).ok();
+                let gctx = GuildContext{ ctx: &*p.0, guild: &p.1 };
+                gctx.change_channel_permissions(cfg.channel_name.as_str(), cfg.role_name.as_str(), perm.clone()).map_err(|err| println!("failed to change perms of the channel {:?}", err)).ok();
+                if let Ok(Some(ch)) = gctx.find_channel(cfg.channel_name.as_str()) {
+                    ch.send_message(&*p.0.http.clone(), |m| m.content(msg.clone())).map_err(|err| println!("failed the send a message {:?}", err)).ok();
                 }
             });
+        };
+
+        scheduler.add(Job::new(unlock_spec, || {
+            println!("unlocking");
+            job_fn(cfg.unlock_message.as_str(), create_unlock_permisson());
             println!("done");
         }));
 
         scheduler.add(Job::new(lock_spec, || {
             println!("locking");
-            let state = state.clone();
-            let mut state_guard = state.lock();
-            (*state_guard).locked = true; 
-            (*state_guard).guilds.iter().for_each(|p| {
-                lock_channel(&*p.0, &p.1, cfg.channel_name.as_str(), cfg.role_name.as_str()).map_err(|err| println!("failed to lock the channel {:?}", err)).ok();
-                if let Ok(Some(ch)) = find_channel(&*p.0, &p.1.id, cfg.channel_name.as_str()) {
-                    ch.send_message(&*p.0.http.clone(), |m| m.content(cfg.lock_message.as_str())).map_err(|err| println!("failed to send a message {:?}", err)).ok();
-                }
-            });
+            job_fn(cfg.lock_message.as_str(), create_lock_permisson());
             println!("done");
         }));
 
