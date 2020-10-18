@@ -70,9 +70,4 @@ impl EventHandler for Handler {
             }
         }
     }
-    //i wanted to have two different handlers, one for agressive locking
-    //but i dont know how to share methods between implemetations and copying guild_create
-    //and guild_delete to another implemetation is just stupid
-    //so yeah line 92 is executed for every message 
-    //i maybe could also store the config in the handler and access it from self idk
 }

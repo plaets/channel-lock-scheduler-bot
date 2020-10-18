@@ -12,13 +12,13 @@ pub struct PartialPermissionOverwrite {
 pub fn create_lock_permisson() -> PartialPermissionOverwrite {
     PartialPermissionOverwrite {
         allow: Permissions::empty(),
-        deny: Permissions::SEND_MESSAGES,
+        deny: Permissions::SEND_MESSAGES | Permissions::ATTACH_FILES,
     }
 }
 
 pub fn create_unlock_permisson() -> PartialPermissionOverwrite {
     PartialPermissionOverwrite {
-        allow: Permissions::SEND_MESSAGES,
+        allow: Permissions::SEND_MESSAGES | Permissions::ATTACH_FILES,
         deny: Permissions::empty(),
     }
 }
