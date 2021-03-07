@@ -66,7 +66,7 @@ impl EventHandler for Handler {
             if (*state_guard).locked && 
                 msg.channel_id == (*state_guard).guilds.iter().find(|p| p.1.id == msg.guild_id.unwrap()).unwrap().2 &&
                 *msg.author.id.as_u64() != (*state_guard).bot_id {
-                    msg.delete(ctx.http).map_err(|_| println!("failed to delete a message")).ok();
+                    msg.delete(ctx.http).map_err(|err| println!("failed to delete a message {:?}", err)).ok();
             }
         }
     }
