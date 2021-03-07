@@ -48,6 +48,15 @@ jobs:
         path: |
           target/release/channel-lock-scheduler-bot
 
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: false
+        title: Linux release
+        files: |
+          target/release/channel-lock-scheduler-bot
+
   build-win:
     runs-on: windows-latest 
     steps:
@@ -85,5 +94,14 @@ jobs:
       with:
         name: channel-lock-scheduler-bot-windows
         path: |
+          target/release/channel-lock-scheduler-bot.exe
+
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: false
+        title: Windows release
+        files: |
           target/release/channel-lock-scheduler-bot.exe
 

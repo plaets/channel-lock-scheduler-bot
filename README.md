@@ -6,6 +6,10 @@ This bot can join multiple Discord servers, however, it will work on the same sc
 
 ## Installation
 
+Binaries for x64 Linux and Windows are available on the [releases page](https://github.com/plaets/channel-lock-scheduler-bot/releases)
+
+### Compiling from the source
+
 1. [Install Rust](https://www.rust-lang.org/tools/install)
 2. Clone this repository
 3. Run `cargo run --release` in the cloned repository
@@ -13,9 +17,9 @@ This bot can join multiple Discord servers, however, it will work on the same sc
 5. Modify the created configuration file (a file named `bot.cfg` should appear in your working directory after running `cargo run --release`)
 6. Run `cargo run --release` again
 
-### Cross compilation
+### Cross-compilation
 
-For cross-compiling I recommend [cross](https://github.com/rust-embedded/cross)
+For cross-compilation I recommend [cross](https://github.com/rust-embedded/cross)
 
 1. [Install cross](https://github.com/rust-embedded/cross#installation)
 2. Run `cross build --target arm-unknown-linux-musleabihf --release`, replace `arm-unknown-linux-musleabihf` with the target (`arm-unknown-linux-musleabihf` is ok for Raspberry Pi 3)
@@ -47,7 +51,9 @@ agressive_lock = true            # if enabled, when the channel is locked, the b
 
 * Refactoring
 * `agressive_lock` should work only if a user has the role specified in the configuration
+* Server emojis 
 * Logs
+* Daylight saving time 
 
 ## License
 
