@@ -13,6 +13,13 @@ This bot can join multiple Discord servers, however, it will work on the same sc
 5. Modify the created configuration file (a file named `bot.cfg` should appear in your working directory after running `cargo run --release`)
 6. Run `cargo run --release` again
 
+### Cross compilation
+
+For cross-compiling I recommend [cross](https://github.com/rust-embedded/cross)
+
+1. [Install cross](https://github.com/rust-embedded/cross#installation)
+2. Run `cross build --target arm-unknown-linux-musleabihf --release`, replace `arm-unknown-linux-musleabihf` with the target (`arm-unknown-linux-musleabihf` is ok for Raspberry Pi 3)
+
 ## Configuration file
 
 The bot searches for `bot.cfg` in its working directory. An example configuration file will be created when the bot is run for the first time.
