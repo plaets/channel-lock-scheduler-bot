@@ -24,6 +24,14 @@ For cross-compilation I recommend [cross](https://github.com/rust-embedded/cross
 1. [Install cross](https://github.com/rust-embedded/cross#installation)
 2. Run `cross build --target arm-unknown-linux-musleabihf --release`, replace `arm-unknown-linux-musleabihf` with the target (`arm-unknown-linux-musleabihf` is ok for Raspberry Pi 3)
 
+## Running the bot
+
+1. [Download](https://github.com/plaets/channel-lock-scheduler-bot/releases) or compile latest version of the bot
+2. Generate a Discord API token, example tutorial: https://www.writebots.com/discord-bot-token/
+3. Create a `bot.cfg` file, replace `DISCORD_TOKEN` with the token you got from the tutorial
+4. Start the bot
+5. Generate and use the bot invitation link (step 5 of the tutorial from step 2). This bot will need permissions for sending messages, managing roles and channels, viewing channels, sending, managing and reading messages. 
+
 ## Configuration file
 
 The bot searches for `bot.cfg` in its working directory. An example configuration file will be created when the bot is run for the first time.
@@ -50,8 +58,9 @@ agressive_lock = true            # if enabled, when the channel is locked, the b
 ## TODO
 
 * Refactoring
-* `agressive_lock` should work only if a user has the role specified in the configuration
+* Managing multiple channels
 * Server emojis 
+* `agressive_lock` should work only if a user has the role specified in the configuration
 * Logs
 * Daylight saving time 
 
